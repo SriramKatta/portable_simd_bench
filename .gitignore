@@ -1,0 +1,8 @@
+build/
+build-*/
+.cache/
+.vscode/
+.idea/
+*.swp
+*~
+compile_commands.json

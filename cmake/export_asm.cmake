@@ -1,10 +1,13 @@
 # Export the compiler-emitted assembly (-S) of every registered target.
 #
-#   psb_export_asm(<target>)
+#   psb_export_asm(<target> [OUTPUT_NAME <stem>])
 #
 # For each source of <target> this writes
 #   ${PSB_ASM_DIR}/<source path relative to the target's source dir, .s>
 # e.g. build/asm/copy/xsimd.s, ready for OSACA / llvm-mca or for diffing backends.
+# OUTPUT_NAME replaces the file stem of every output (directory kept): with
+# OUTPUT_NAME autovec, copy/reference.cpp is written to copy/autovec.s. Needed when
+# two targets compile the same source (see SOURCE_BACKEND in psb_add_backend).
 #
 # Central switches:
 #   target asm         builds every export: cmake --build build --target asm
@@ -45,6 +48,7 @@ set(PSB_ASM_MIRRORED_PROPERTIES
     VISIBILITY_INLINES_HIDDEN COMPILE_FLAGS COMPILE_FEATURES)
 
 function(psb_export_asm target)
+    cmake_parse_arguments(ARG "" "OUTPUT_NAME" "" ${ARGN})
     if(NOT TARGET ${target})
         message(FATAL_ERROR "psb_export_asm: '${target}' is not a target")
     endif()
@@ -64,6 +68,9 @@ function(psb_export_asm target)
                                 "the target's source dir '${src_dir}'")
         endif()
         cmake_path(REPLACE_EXTENSION rel LAST_ONLY ".s" OUTPUT_VARIABLE rel_asm)
+        if(ARG_OUTPUT_NAME)
+            cmake_path(REPLACE_FILENAME rel_asm "${ARG_OUTPUT_NAME}.s" OUTPUT_VARIABLE rel_asm)
+        endif()
         set(out "${PSB_ASM_DIR}/${rel_asm}")
 
         get_property(taken GLOBAL PROPERTY PSB_ASM_OUTPUTS)

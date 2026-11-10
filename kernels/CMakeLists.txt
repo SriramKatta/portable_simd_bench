@@ -33,15 +33,24 @@ set(PSB_KERNELS copy)
 
 add_library(kernels INTERFACE)
 
-# psb_add_backend(<backend> [AUTOVEC] [NO_ASM_EXPORT] [COMPILE_OPTIONS ...] [LINK_LIBRARIES ...])
+# psb_add_backend(<backend> [AUTOVEC] [NO_ASM_EXPORT] [SOURCE_BACKEND <name>]
+#                 [COMPILE_OPTIONS ...] [LINK_LIBRARIES ...])
 # The auto-vectorizer is off unless AUTOVEC is given, so that a new backend cannot
 # pick up compiler-generated SIMD by forgetting a flag.
+# SOURCE_BACKEND: compile kernels/<kernel>/<name>.cpp instead of <backend>.cpp, so two
+# backends built with different flags can share one source (autovec uses reference.cpp).
+# Every backend library gets the private definition PSB_BACKEND=<backend>, which a
+# shared source uses to name its tag type (backends::PSB_BACKEND).
 # NO_ASM_EXPORT: do not register the sources with psb_export_asm (the ispc wrapper
 # is only a forwarding call; the kernel itself is not C++).
 function(psb_add_backend backend)
-    cmake_parse_arguments(ARG "AUTOVEC;NO_ASM_EXPORT" "" "COMPILE_OPTIONS;LINK_LIBRARIES" ${ARGN})
-    # Convention: kernels/<kernel>/<backend>.cpp.
-    list(TRANSFORM PSB_KERNELS APPEND /${backend}.cpp OUTPUT_VARIABLE sources)
+    cmake_parse_arguments(ARG "AUTOVEC;NO_ASM_EXPORT" "SOURCE_BACKEND" "COMPILE_OPTIONS;LINK_LIBRARIES" ${ARGN})
+    # Convention: kernels/<kernel>/<backend>.cpp, unless SOURCE_BACKEND names another file.
+    set(source_backend ${backend})
+    if(ARG_SOURCE_BACKEND)
+        set(source_backend ${ARG_SOURCE_BACKEND})
+    endif()
+    list(TRANSFORM PSB_KERNELS APPEND /${source_backend}.cpp OUTPUT_VARIABLE sources)
     set(autovec_flags ${PSB_FLAGS_NO_AUTOVEC})
     if(ARG_AUTOVEC)
         set(autovec_flags "")
@@ -49,6 +58,7 @@ function(psb_add_backend backend)
     set(target kernels_${backend})
     add_library(${target} STATIC ${sources})
     target_include_directories(${target} PUBLIC ${PROJECT_SOURCE_DIR})
+    target_compile_definitions(${target} PRIVATE PSB_BACKEND=${backend})
     target_compile_options(${target} PRIVATE
         ${PSB_WARNING_FLAGS}
         ${PSB_ARCH_FLAGS_LIST}
@@ -59,13 +69,17 @@ function(psb_add_backend backend)
         target_link_libraries(${target} PRIVATE ${ARG_LINK_LIBRARIES})
     endif()
     if(NOT ARG_NO_ASM_EXPORT)
-        psb_export_asm(${target})
+        if(ARG_SOURCE_BACKEND)
+            psb_export_asm(${target} OUTPUT_NAME ${backend})
+        else()
+            psb_export_asm(${target})
+        endif()
     endif()
     target_link_libraries(kernels INTERFACE ${target})
 endfunction()
 
 psb_add_backend(reference)
-psb_add_backend(autovec         AUTOVEC)
+psb_add_backend(autovec         AUTOVEC SOURCE_BACKEND reference)
 psb_add_backend(ompsimd         COMPILE_OPTIONS -fopenmp-simd)
 psb_add_backend(simd_intrinsics)
 psb_add_backend(xsimd           LINK_LIBRARIES xsimd)
