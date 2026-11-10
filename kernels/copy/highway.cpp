@@ -16,7 +16,8 @@ namespace kernels
         std::size_t i = 0;
         for (; i + lanes <= n; i += lanes)
         {
-            hn::StoreU(hn::LoadU(d, src + i), d, dst + i);
+            const auto src_simd = hn::LoadU(d, src + i);
+            hn::StoreU(src_simd, d, dst + i);
         }
         for (; i < n; ++i)
         {

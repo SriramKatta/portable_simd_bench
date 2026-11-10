@@ -28,8 +28,7 @@ if(NOT PSB_HAVE_OPENMP_SIMD)
 endif()
 
 # ---- Kernels and backends --------------------------------------------------
-# Adding a kernel: add the directory kernels/<name>/<backend>.cpp files and list it here.
-set(PSB_KERNELS copy)
+# The kernels are listed once, in PSB_KERNELS in the top-level CMakeLists.txt.
 
 add_library(kernels INTERFACE)
 
@@ -92,7 +91,7 @@ psb_add_backend(highway         LINK_LIBRARIES hwy)
 # kernels_ispc, without any of the GCC flags.
 if(PSB_HAVE_ISPC)
     message(WARNING "The ispc backend was written without an ISPC compiler available and has "
-                    "never been built or run. Check kernels/copy/copy.ispc, the generated header "
+                    "never been built or run. Check the kernels/<kernel>/<kernel>.ispc files, the generated headers "
                     "and the compile command before trusting it or its results.")
 
     psb_add_backend(ispc NO_ASM_EXPORT)
@@ -110,8 +109,8 @@ endif()
 # psb_target_pystencils_sources (see cmake/pystencils.cmake).
 if(PSB_HAVE_PYSTENCILS)
     message(WARNING "The pystencils backend was written without pystencils available and has "
-                    "never been generated or built. Check kernels/copy/copy_pystencils.py, the "
-                    "generated header and the compile command before trusting it or its results.")
+                    "never been generated or built. Check the kernels/<kernel>/<kernel>_pystencils.py scripts, the "
+                    "generated headers and the compile command before trusting it or its results.")
 
     # NO_ASM_EXPORT: the wrapper is only a forwarding call, and the generated sources are
     # not known to psb_export_asm yet.
@@ -119,6 +118,8 @@ if(PSB_HAVE_PYSTENCILS)
 
     # Convention: kernels/<kernel>/<kernel>_pystencils.py.
     list(TRANSFORM PSB_KERNELS REPLACE "(.+)" "\\1/\\1_pystencils.py" OUTPUT_VARIABLE PSB_PYSTENCILS_SCRIPTS)
-    psb_target_pystencils_sources(kernels_pystencils SCRIPTS ${PSB_PYSTENCILS_SCRIPTS})
+    # pystencils_common.py is imported by every script, so editing it regenerates them.
+    psb_target_pystencils_sources(kernels_pystencils SCRIPTS ${PSB_PYSTENCILS_SCRIPTS}
+                                  DEPENDS pystencils_common.py)
     target_compile_definitions(kernels INTERFACE PSB_HAVE_PYSTENCILS)
 endif()

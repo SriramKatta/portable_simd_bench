@@ -10,7 +10,7 @@
 //    of at most 2^30 elements, each chunk being one foreach over an int32 count.
 //  * The chunk base is a uniform uint64 and pointers are advanced by it. ISPC
 //    does addressing arithmetic in 32 bits by default ("Selecting 32 or 64 Bit
-//    Addressing"), so the build passes --addressing=64 (kernels/CMakeLists.txt).
+//    Addressing"), so the build passes --addressing=64 (cmake/ispc.cmake).
 //  * foreach handles a trip count that is not a multiple of the gang size
 //    ("foreach naturally handles the case where programCount doesn't evenly
 //    divide the number of elements"); the tail runs with a partial mask.

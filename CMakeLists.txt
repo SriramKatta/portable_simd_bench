@@ -28,6 +28,12 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
 else()
     set(PSB_ARCH_FLAGS_DEFAULT "-mcpu=native")
 endif()
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|AARCH64|ARM64)$")
+    message(WARNING "This project has never been built for ARM: no backend was compiled or checked "
+                    "there, and the NEON and SVE intrinsics in kernels/simd_isa.hpp were written "
+                    "without an ARM toolchain. Run ctest and check the generated code before "
+                    "trusting any result.")
+endif()
 set(PSB_ARCH_FLAGS "${PSB_ARCH_FLAGS_DEFAULT}" CACHE STRING "ISA flags applied to every backend")
 separate_arguments(PSB_ARCH_FLAGS_LIST UNIX_COMMAND "${PSB_ARCH_FLAGS}")
 
@@ -46,6 +52,10 @@ include(cmake/pystencils.cmake)
 set(PSB_WARNING_FLAGS -Wall -Wextra)
 
 include(cmake/export_asm.cmake)
+
+# The kernel list, written once: kernels/, bench/ and tests/ all derive their sources
+# from it (kernels/<kernel>/, bench/<kernel>.cpp, tests/test_<kernel>.cpp).
+set(PSB_KERNELS copy scale add triad)
 
 add_subdirectory(kernels)
 add_subdirectory(bench)

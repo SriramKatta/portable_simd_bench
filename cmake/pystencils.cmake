@@ -84,13 +84,16 @@ endif()
 # Generate C++ from pystencils-sfg scripts and compile it as part of an existing target.
 #
 #   psb_target_pystencils_sources(<target> SCRIPTS <x.py>...
-#                                 [PYSTENCILS_TARGET <t>] [SCRIPT_ARGS <arg>...])
+#                                 [PYSTENCILS_TARGET <t>] [SCRIPT_ARGS <arg>...]
+#                                 [DEPENDS <file>...])
 #
 # SCRIPTS            generator scripts; relative paths resolve against the calling
 #                    directory's CMAKE_CURRENT_SOURCE_DIR.
 # PYSTENCILS_TARGET  pystencils SIMD target passed to the scripts as --target=<t>
 #                    (default ${PSB_PYSTENCILS_TARGET}).
 # SCRIPT_ARGS        further arguments for the scripts, after --target.
+# DEPENDS            further files the generation depends on, e.g. a Python module the scripts
+#                    import; relative paths resolve like SCRIPTS. Editing one regenerates the code.
 #
 # Wraps pystencilssfg_generate_target_sources(): the generated <script stem>.cpp is added
 # to the sources of <target> and so is compiled with <target>'s own flags, and the
@@ -100,7 +103,7 @@ endif()
 # pystencils-sfg was not found (PSB_HAVE_PYSTENCILS is false), so guard the call with
 # if(PSB_HAVE_PYSTENCILS).
 function(psb_target_pystencils_sources target)
-    cmake_parse_arguments(ARG "" "PYSTENCILS_TARGET" "SCRIPTS;SCRIPT_ARGS" ${ARGN})
+    cmake_parse_arguments(ARG "" "PYSTENCILS_TARGET" "SCRIPTS;SCRIPT_ARGS;DEPENDS" ${ARGN})
     if(NOT PSB_HAVE_PYSTENCILS)
         message(FATAL_ERROR "psb_target_pystencils_sources: pystencils and pystencils-sfg "
                             "were not found (PSB_HAVE_PYSTENCILS is false)")
@@ -122,6 +125,13 @@ function(psb_target_pystencils_sources target)
         list(APPEND scripts "${abs_script}")
     endforeach()
 
+    set(depends "")
+    foreach(file IN LISTS ARG_DEPENDS)
+        cmake_path(ABSOLUTE_PATH file BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                   NORMALIZE OUTPUT_VARIABLE abs_file)
+        list(APPEND depends "${abs_file}")
+    endforeach()
+
     # The target and the extra arguments reach the scripts only as command-line
     # arguments, which do not by themselves trigger regeneration. This file is
     # rewritten only when its content changes, and the generation depends on it.
@@ -134,5 +144,5 @@ function(psb_target_pystencils_sources target)
     pystencilssfg_generate_target_sources(${target}
         SCRIPTS ${scripts}
         SCRIPT_ARGS --target=${ARG_PYSTENCILS_TARGET} ${ARG_SCRIPT_ARGS}
-        DEPENDS ${stamp})
+        DEPENDS ${stamp} ${depends})
 endfunction()

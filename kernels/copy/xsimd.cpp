@@ -13,7 +13,8 @@ namespace kernels
         std::size_t i = 0;
         for (; i + lanes <= n; i += lanes)
         {
-            batch::load_unaligned(src + i).store_unaligned(dst + i);
+            const batch src_simd = batch::load_unaligned(src + i);
+            src_simd.store_unaligned(dst + i);
         }
         for (; i < n; ++i)
         {
